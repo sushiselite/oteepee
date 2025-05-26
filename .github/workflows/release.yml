@@ -25,7 +25,14 @@ jobs:
         
     - name: Get version from tag
       id: get_version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+    - name: Debug - List build artifacts
+      run: |
+        echo "Build directory contents:"
+        ls -la build/
+        echo "Looking for files with version ${{ steps.get_version.outputs.VERSION }}:"
+        ls -la build/*${{ steps.get_version.outputs.VERSION }}* || echo "No files found with that version"
       
     - name: Create Release
       id: create_release
