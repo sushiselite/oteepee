@@ -132,15 +132,33 @@ if [ -d "$EXPORT_PATH/$APP_NAME" ]; then
     ln -s /Applications "$DMG_TEMP_DIR/Applications"
     
     # Create DMG
-    hdiutil create -volname "$PROJECT_NAME v$APP_VERSION" \
+    print_status "Running hdiutil to create DMG..."
+    if hdiutil create -volname "$PROJECT_NAME v$APP_VERSION" \
         -srcfolder "$DMG_TEMP_DIR" \
         -ov -format UDZO \
-        "$DMG_PATH"
-    
-    if [ $? -eq 0 ]; then
+        "$DMG_PATH" 2>&1; then
         print_success "DMG created: $DMG_PATH"
+        # Verify DMG was actually created
+        if [ -f "$DMG_PATH" ]; then
+            DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
+            print_status "DMG file verified: $DMG_SIZE"
+        else
+            print_error "DMG creation reported success but file not found!"
+        fi
     else
-        print_warning "DMG creation failed, but app is available at $EXPORT_PATH/$APP_NAME"
+        print_error "DMG creation failed with hdiutil"
+        print_status "Trying alternative DMG creation method..."
+        
+        # Alternative method: create a simple DMG without fancy layout
+        if hdiutil create -volname "$PROJECT_NAME" \
+            -srcfolder "$EXPORT_PATH/$APP_NAME" \
+            -ov -format UDZO \
+            "$DMG_PATH" 2>&1; then
+            print_success "DMG created with alternative method: $DMG_PATH"
+        else
+            print_warning "Both DMG creation methods failed - continuing without DMG"
+            print_warning "App is available at $EXPORT_PATH/$APP_NAME"
+        fi
     fi
     
     # Clean up temp directory

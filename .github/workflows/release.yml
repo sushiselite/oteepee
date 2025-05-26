@@ -18,6 +18,13 @@ jobs:
       with:
         xcode-version: latest-stable
         
+    - name: Check macOS tools
+      run: |
+        echo "Checking required macOS tools..."
+        which hdiutil && echo "✅ hdiutil available" || echo "❌ hdiutil not found"
+        hdiutil version || echo "❌ hdiutil version check failed"
+        which zip && echo "✅ zip available" || echo "❌ zip not found"
+        
     - name: Build Release
       run: |
         chmod +x release_build.sh
@@ -31,14 +38,36 @@ jobs:
       run: |
         echo "Build directory contents:"
         ls -la build/
+        echo ""
+        echo "All files in build directory:"
+        find build/ -type f -exec ls -lh {} \;
+        echo ""
         echo "Looking for files with version ${{ steps.get_version.outputs.VERSION }}:"
         ls -la build/*${{ steps.get_version.outputs.VERSION }}* || echo "No files found with that version"
-        echo "Checking file sizes:"
-        du -h build/*.zip build/*.dmg 2>/dev/null || echo "Some files missing"
+        echo ""
+        echo "Checking for ZIP and DMG files specifically:"
+        find build/ -name "*.zip" -o -name "*.dmg" | while read file; do
+          echo "Found: $file ($(du -h "$file" | cut -f1))"
+        done
+        echo ""
         echo "Verifying file existence for upload:"
         test -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.zip" && echo "✅ ZIP file exists" || echo "❌ ZIP file missing"
         test -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.dmg" && echo "✅ DMG file exists" || echo "❌ DMG file missing"
       
+    - name: Prepare release files
+      id: prepare_files
+      run: |
+        FILES="build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.zip"
+        if [ -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.dmg" ]; then
+          FILES="$FILES"$'\n'"build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.dmg"
+          echo "DMG_AVAILABLE=true" >> $GITHUB_OUTPUT
+        else
+          echo "DMG_AVAILABLE=false" >> $GITHUB_OUTPUT
+        fi
+        echo "FILES<<EOF" >> $GITHUB_OUTPUT
+        echo "$FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -55,8 +84,8 @@ jobs:
           - Privacy-first design
           
           ### 📦 Installation
-          1. Download the ZIP or DMG file below
-          2. Extract (ZIP) or mount (DMG) and drag OTeePee.app to Applications
+          1. Download the ZIP${{ steps.prepare_files.outputs.DMG_AVAILABLE == 'true' && ' or DMG' || '' }} file below
+          2. Extract (ZIP)${{ steps.prepare_files.outputs.DMG_AVAILABLE == 'true' && ' or mount (DMG)' || '' }} and drag OTeePee.app to Applications
           3. Launch and grant required permissions
           
           ### 🔒 Security Note
@@ -65,8 +94,6 @@ jobs:
           ---
           
           **System Requirements:** macOS 15.0 (Sequoia) or later
-        files: |
-          build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.zip
-          build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.dmg
+        files: ${{ steps.prepare_files.outputs.FILES }}
         draft: false
         prerelease: false 
