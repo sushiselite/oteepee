@@ -1,0 +1,79 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: Build Release
+      run: |
+        chmod +x release_build.sh
+        ./release_build.sh
+        
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: OTeePee ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## What's New in ${{ steps.get_version.outputs.VERSION }}
+          
+          ### 🚀 Features
+          - Automatic OTP detection from iMessage
+          - Instant clipboard copying
+          - Native macOS integration
+          - Privacy-first design
+          
+          ### 📦 Installation
+          1. Download the ZIP file below
+          2. Extract and drag OTeePee.app to Applications
+          3. Launch and grant required permissions
+          
+          ### 🔒 Security Note
+          This app requires Full Disk Access to read iMessage database. All processing happens locally on your device.
+          
+          ---
+          
+          **System Requirements:** macOS 15.0 (Sequoia) or later
+        draft: false
+        prerelease: false
+        
+    - name: Upload ZIP Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/OTeePee-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_name: OTeePee-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_content_type: application/zip
+        
+    - name: Upload DMG Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/OTeePee-${{ steps.get_version.outputs.VERSION }}.dmg
+        asset_name: OTeePee-${{ steps.get_version.outputs.VERSION }}.dmg
+        asset_content_type: application/x-apple-diskimage 
