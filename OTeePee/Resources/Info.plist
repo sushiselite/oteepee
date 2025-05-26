@@ -17,26 +17,26 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
+	<string>0.1</string>
 	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<string>202505252225</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
 	<true/>
-	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.utilities</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>OTeePee needs to send Apple Events to interact with system preferences and other applications for setup purposes.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2024. All rights reserved.</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 	<key>NSSupportsSuddenTermination</key>
 	<false/>
-	<key>NSUserNotificationAlertStyle</key>
-	<string>alert</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>OTeePee needs to send Apple Events to interact with system preferences and other applications for setup purposes.</string>
 	<key>NSSystemAdministrationUsageDescription</key>
 	<string>OTeePee requires system administration access to read the iMessage database for OTP detection.</string>
+	<key>NSUserNotificationAlertStyle</key>
+	<string>alert</string>
 </dict>
-</plist> 
+</plist>
