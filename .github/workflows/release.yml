@@ -33,15 +33,18 @@ jobs:
         ls -la build/
         echo "Looking for files with version ${{ steps.get_version.outputs.VERSION }}:"
         ls -la build/*${{ steps.get_version.outputs.VERSION }}* || echo "No files found with that version"
+        echo "Checking file sizes:"
+        du -h build/*.zip build/*.dmg 2>/dev/null || echo "Some files missing"
+        echo "Verifying file existence for upload:"
+        test -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.zip" && echo "✅ ZIP file exists" || echo "❌ ZIP file missing"
+        test -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.dmg" && echo "✅ DMG file exists" || echo "❌ DMG file missing"
       
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref }}
-        release_name: OTeePee ${{ steps.get_version.outputs.VERSION }}
+        name: OTeePee ${{ steps.get_version.outputs.VERSION }}
         body: |
           ## What's New in ${{ steps.get_version.outputs.VERSION }}
           
@@ -52,8 +55,8 @@ jobs:
           - Privacy-first design
           
           ### 📦 Installation
-          1. Download the ZIP file below
-          2. Extract and drag OTeePee.app to Applications
+          1. Download the ZIP or DMG file below
+          2. Extract (ZIP) or mount (DMG) and drag OTeePee.app to Applications
           3. Launch and grant required permissions
           
           ### 🔒 Security Note
@@ -62,25 +65,8 @@ jobs:
           ---
           
           **System Requirements:** macOS 15.0 (Sequoia) or later
+        files: |
+          build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.zip
+          build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.dmg
         draft: false
-        prerelease: false
-        
-    - name: Upload ZIP Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/OTeePee-${{ steps.get_version.outputs.VERSION }}.zip
-        asset_name: OTeePee-${{ steps.get_version.outputs.VERSION }}.zip
-        asset_content_type: application/zip
-        
-    - name: Upload DMG Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/OTeePee-${{ steps.get_version.outputs.VERSION }}.dmg
-        asset_name: OTeePee-${{ steps.get_version.outputs.VERSION }}.dmg
-        asset_content_type: application/x-apple-diskimage 
+        prerelease: false 
