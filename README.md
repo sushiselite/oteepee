@@ -4,6 +4,8 @@
 
 OTeePee is a native macOS application that automatically monitors your iMessage for incoming OTP (One-Time Password) codes and copies them directly to your clipboard with a helpful notification. Perfect for seamless 2FA authentication in any browser or application.
 
+> 🌐 **[View Landing Page](landing-page/)** | 📖 **[Deployment Guide](LANDING_PAGE_DEPLOYMENT.md)**
+
 ## ✨ Features
 
 - **Automatic OTP Detection**: Monitors iMessage for incoming SMS/text messages containing OTP codes
@@ -23,7 +25,7 @@ OTeePee is a native macOS application that automatically monitors your iMessage 
 ### Download & Installation
 
 #### Option 1: Download Release (Recommended)
-1. **[Download the latest release](https://github.com/yourusername/oteepee/releases/latest)** 
+1. **[Download the latest release](https://github.com/sushiselite/oteepee/releases/latest)** 
 2. **Choose your preferred format:**
    - `OTeePee-vX.X.X.zip` - ZIP archive (recommended for most users)
    - `OTeePee-vX.X.X.dmg` - Disk image with installer
@@ -37,7 +39,7 @@ Requirements: Xcode 12.0 or later
 
 ```bash
 # Clone and build
-git clone https://github.com/yourusername/oteepee.git
+git clone https://github.com/sushiselite/oteepee.git
 cd oteepee
 ./release_build.sh
 ```
@@ -60,7 +62,7 @@ OTeePee requires the following permissions to function:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/oteepee.git
+git clone https://github.com/sushiselite/oteepee.git
 cd oteepee
 
 # Open in Xcode
