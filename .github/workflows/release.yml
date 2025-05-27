@@ -22,118 +22,22 @@ jobs:
       with:
         xcode-version: latest-stable
         
-    - name: Import Code Signing Certificate
-      env:
-        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-        CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
-      run: |
-        # Create temporary keychain
-        security create-keychain -p temp_password temp.keychain
-        security default-keychain -s temp.keychain
-        security unlock-keychain -p temp_password temp.keychain
-        
-        # Import certificate
-        echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
-        security import certificate.p12 -k temp.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
-        security set-key-partition-list -S apple-tool:,apple: -s -k temp_password temp.keychain
-        
-        # Verify certificate
-        security find-identity -v -p codesigning temp.keychain
-        
-    - name: Setup Notarization Profile
-      env:
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-        TEAM_ID: ${{ secrets.TEAM_ID }}
-      run: |
-        # Store notarization credentials
-        xcrun notarytool store-credentials "oteepee-profile" \
-          --apple-id "$APPLE_ID" \
-          --password "$APPLE_PASSWORD" \
-          --team-id "$TEAM_ID" \
-          --keychain temp.keychain
-        
-    - name: Check macOS tools
-      run: |
-        echo "Checking required macOS tools..."
-        which hdiutil && echo "✅ hdiutil available" || echo "❌ hdiutil not found"
-        hdiutil version || echo "❌ hdiutil version check failed"
-        which zip && echo "✅ zip available" || echo "❌ zip not found"
-        which jq && echo "✅ jq available" || (echo "❌ jq not found, installing..." && brew install jq)
-        
     - name: Build Release
       run: |
         chmod +x release_build.sh
         ./release_build.sh
         
-    - name: Sign and Notarize App
-      run: |
-        chmod +x sign_and_notarize_compliant.sh
-        ./sign_and_notarize_compliant.sh
-        
-    - name: Create Notarized DMG
-      run: |
-        # Create a notarized DMG from the notarized app
-        VERSION=$(defaults read "$(pwd)/OTeePee/Resources/Info.plist" CFBundleShortVersionString)
-        
-        # Create DMG
-        hdiutil create -volname "OTeePee" -srcfolder "build/Export/OTeePee.app" -ov -format UDZO "build/OTeePee-v${VERSION}-notarized.dmg"
-        
-        # Sign the DMG
-        CERT_NAME=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)"/\1/')
-        codesign --force --sign "$CERT_NAME" --timestamp "build/OTeePee-v${VERSION}-notarized.dmg"
-        
-        # Notarize the DMG
-        xcrun notarytool submit "build/OTeePee-v${VERSION}-notarized.dmg" \
-          --keychain-profile "oteepee-profile" \
-          --wait
-          
-        # Staple the DMG
-        xcrun stapler staple "build/OTeePee-v${VERSION}-notarized.dmg"
-        
-        # Verify the DMG
-        spctl -a -t open --context context:primary-signature -v "build/OTeePee-v${VERSION}-notarized.dmg"
-        
-    - name: Create ZIP from Notarized App
+    - name: Create ZIP from App
       run: |
         VERSION=$(defaults read "$(pwd)/OTeePee/Resources/Info.plist" CFBundleShortVersionString)
         cd build/Export
-        zip -r "../OTeePee-v${VERSION}-notarized.zip" OTeePee.app
+        zip -r "../OTeePee-v${VERSION}.zip" OTeePee.app
         cd ../..
         
     - name: Get version from tag
       id: get_version
       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
-    - name: Debug - List build artifacts
-      run: |
-        echo "Build directory contents:"
-        ls -la build/
-        echo ""
-        echo "All files in build directory:"
-        find build/ -type f -exec ls -lh {} \;
-        echo ""
-        echo "Looking for notarized files with version ${{ steps.get_version.outputs.VERSION }}:"
-        ls -la build/*${{ steps.get_version.outputs.VERSION }}*notarized* || echo "No notarized files found with that version"
-        echo ""
-        echo "Verifying file existence for upload:"
-        test -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}-notarized.zip" && echo "✅ Notarized ZIP file exists" || echo "❌ Notarized ZIP file missing"
-        test -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}-notarized.dmg" && echo "✅ Notarized DMG file exists" || echo "❌ Notarized DMG file missing"
-      
-    - name: Prepare release files
-      id: prepare_files
-      run: |
-        FILES="build/OTeePee-v${{ steps.get_version.outputs.VERSION }}-notarized.zip"
-        if [ -f "build/OTeePee-v${{ steps.get_version.outputs.VERSION }}-notarized.dmg" ]; then
-          FILES="$FILES"$'\n'"build/OTeePee-v${{ steps.get_version.outputs.VERSION }}-notarized.dmg"
-          echo "DMG_AVAILABLE=true" >> $GITHUB_OUTPUT
-        else
-          echo "DMG_AVAILABLE=false" >> $GITHUB_OUTPUT
-        fi
-        echo "FILES<<EOF" >> $GITHUB_OUTPUT
-        echo "$FILES" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-        
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -150,31 +54,18 @@ jobs:
           - Privacy-first design
           
           ### 📦 Installation
-          1. Download the ZIP${{ steps.prepare_files.outputs.DMG_AVAILABLE == 'true' && ' or DMG' || '' }} file below
-          2. Extract (ZIP)${{ steps.prepare_files.outputs.DMG_AVAILABLE == 'true' && ' or mount (DMG)' || '' }} and drag OTeePee.app to Applications
+          1. Download the ZIP file below
+          2. Extract and drag OTeePee.app to Applications
           3. Launch and grant required permissions
           
           ### 🔒 Security Note
           This app requires Full Disk Access to read iMessage database. All processing happens locally on your device.
           
-          ### ✅ Notarization
-          This release is **fully notarized** by Apple and meets all security requirements:
-          - ✅ Signed with Developer ID certificate
-          - ✅ Hardened Runtime enabled
-          - ✅ Secure timestamp included
-          - ✅ Apple notarized and stapled
-          - ✅ No security warnings on download
+          **Note:** This is an unsigned build. You may need to right-click and select "Open" to bypass Gatekeeper warnings, or use a manually notarized version.
           
           ---
           
           **System Requirements:** macOS 15.0 (Sequoia) or later
-        files: ${{ steps.prepare_files.outputs.FILES }}
+        files: build/OTeePee-v${{ steps.get_version.outputs.VERSION }}.zip
         draft: false
-        prerelease: false
-        
-    - name: Cleanup
-      if: always()
-      run: |
-        # Clean up temporary files and keychain
-        rm -f certificate.p12
-        security delete-keychain temp.keychain || true 
+        prerelease: false 
